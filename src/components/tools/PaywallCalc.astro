@@ -1,0 +1,84 @@
+---
+const plans = [
+  { k: 'a', label: 'Plan A', price: 6.99, period: 'week', trial: 3, start: 6, t2p: 45, churn: 12 },
+  { k: 'b', label: 'Plan B', price: 39.99, period: 'year', trial: 7, start: 5, t2p: 40, churn: 0 },
+];
+---
+<div class="calc" data-calc="paywall">
+  <form>
+    <div class="field"><label for="pw-views">Paywall views per month</label><input class="input" id="pw-views" name="views" type="number" min="0" step="100" value="10000" /></div>
+    {plans.map((p) => (
+      <details class="group" open>
+        <summary>{p.label}</summary>
+        <div style="padding:14px;display:grid;gap:12px">
+          <div class="row3">
+            <div class="field"><label for={`${p.k}-price`}>Price</label><input class="input" id={`${p.k}-price`} name={`${p.k}p`} type="number" min="0" step="0.01" value={p.price} /></div>
+            <div class="field">
+              <label for={`${p.k}-per`}>Billed</label>
+              <select class="select" id={`${p.k}-per`} name={`${p.k}per`}>
+                <option value="week" selected={p.period === 'week'}>Weekly</option>
+                <option value="month" selected={p.period === 'month'}>Monthly</option>
+                <option value="year" selected={p.period === 'year'}>Yearly</option>
+              </select>
+            </div>
+            <div class="field"><label for={`${p.k}-trial`}>Trial days</label><input class="input" id={`${p.k}-trial`} name={`${p.k}t`} type="number" min="0" max="90" step="1" value={p.trial} /></div>
+          </div>
+          <div class="row3">
+            <div class="field"><label for={`${p.k}-start`}>Start rate %</label><input class="input" id={`${p.k}-start`} name={`${p.k}s`} type="number" min="0" max="100" step="0.1" value={p.start} /></div>
+            <div class="field"><label for={`${p.k}-t2p`}>Trial → paid %</label><input class="input" id={`${p.k}-t2p`} name={`${p.k}c`} type="number" min="0" max="100" step="1" value={p.t2p} /></div>
+            <div class="field"><label for={`${p.k}-churn`}>Churn per renewal %</label><input class="input" id={`${p.k}-churn`} name={`${p.k}ch`} type="number" min="0" max="100" step="1" value={p.churn} /></div>
+          </div>
+        </div>
+      </details>
+    ))}
+    <div class="row2">
+      <div class="field"><label for="pw-cm">Commission %</label><input class="input" id="pw-cm" name="cm" type="number" min="0" max="100" step="1" value="15" /></div>
+      <div class="field"><label for="pw-vat">Avg. VAT %</label><input class="input" id="pw-vat" name="vat" type="number" min="0" max="30" step="0.5" value="8" /></div>
+    </div>
+    <p class="note">Start rate = share of paywall views that start a trial (or buy, with no trial). With no trial, set trial → paid to 100%.</p>
+    <div class="share-row">
+      <button type="button" class="btn btn-sm" data-action="copy-link">Copy link to this result</button>
+      <button type="button" class="btn btn-sm btn-ghost" data-action="reset">Reset</button>
+    </div>
+  </form>
+  <div class="out" data-out aria-live="polite"></div>
+</div>
+
+<script>
+  import { mountCalc, num } from '../../app/calc';
+  import { paidPeriods } from '../../lib/appmath';
+
+  const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+  const DAYS = { week: 7, month: 365 / 12, year: 365 } as const;
+
+  mountCalc(document.querySelector<HTMLElement>('[data-calc="paywall"]')!, (v) => {
+    const views = Math.max(0, num(v.views));
+    const factor = (1 / (1 + num(v.vat) / 100)) * (1 - num(v.cm) / 100);
+    const plan = (k: string) => {
+      const per = (v[`${k}per`] as keyof typeof DAYS) in DAYS ? (v[`${k}per`] as keyof typeof DAYS) : 'month';
+      const trial = Math.max(0, num(v[`${k}t`]));
+      // Charges inside the first 365 days: the first at trial end, then one per period.
+      const charges = trial < 365 ? Math.floor((365 - trial - 1e-9) / DAYS[per]) + 1 : 0;
+      const payers = views * (num(v[`${k}s`]) / 100) * (num(v[`${k}c`]) / 100);
+      const payments = paidPeriods(charges, num(v[`${k}ch`]));
+      const proceeds = payers * num(v[`${k}p`]) * payments * factor;
+      return { payers, payments, proceeds, per1k: views ? (proceeds / views) * 1000 : 0, perPayer: payers ? proceeds / payers : 0 };
+    };
+    const a = plan('a');
+    const b = plan('b');
+    const win = a.proceeds >= b.proceeds ? 'A' : 'B';
+    const lead = Math.abs(a.proceeds - b.proceeds);
+    const rows = (label: string, f: (p: typeof a) => string) => `<tr><th>${label}</th><td>${f(a)}</td><td>${f(b)}</td></tr>`;
+    return `<div class="big"><div class="k">Plan ${win} earns more</div><div class="v">+${usd.format(lead)}</div>
+        <div class="s">first-year proceeds from one month of paywall views</div></div>
+      <table class="kv">
+        <tr><th></th><td>Plan A</td><td>Plan B</td></tr>
+        ${rows('Paying subscribers', (p) => Math.round(p.payers).toLocaleString())}
+        ${rows('Avg. payments in year 1', (p) => p.payments.toFixed(1))}
+        ${rows('Proceeds per subscriber', (p) => usd.format(p.perPayer))}
+        ${rows('Per 1,000 paywall views', (p) => usd.format(p.per1k))}
+        ${rows('<strong>First-year proceeds</strong>', (p) => `<strong>${usd.format(p.proceeds)}</strong>`)}
+      </table>
+      <p class="note">Counts payments in the 12 months after each subscriber starts, after VAT and commission. Annual plans renew after this window, so year-2 renewals are not included.</p>`;
+  });
+</script>

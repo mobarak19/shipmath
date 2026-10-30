@@ -1,0 +1,55 @@
+---
+import { STOREFRONTS, COMMISSION } from '../../data/appstore';
+---
+<div class="calc" data-calc="play">
+  <form>
+    <div class="row2">
+      <div class="field"><label for="p-price">Customer price</label><input class="input" id="p-price" name="price" type="number" inputmode="decimal" min="0" step="0.01" value="9.99" /></div>
+      <div class="field">
+        <label for="p-sf">Country</label>
+        <select class="select" id="p-sf" name="sf">
+          {STOREFRONTS.map((s) => <option value={s.code} selected={s.code === 'US'}>{s.name} ({s.currency}{s.vat ? `, VAT ${s.vat}%` : ', tax added'})</option>)}
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <span class="label">Google Play service fee</span>
+      <div class="seg" role="radiogroup" aria-label="Google Play service fee">
+        <label><input type="radio" name="rate" value={String(COMMISSION.google.reduced)} checked /><span>{COMMISSION.google.reduced}% (first $1M / subscriptions)</span></label>
+        <label><input type="radio" name="rate" value={String(COMMISSION.google.standard)} /><span>{COMMISSION.google.standard}% (above $1M)</span></label>
+      </div>
+    </div>
+    <div class="share-row">
+      <button type="button" class="btn btn-sm" data-action="copy-link">Copy link to this result</button>
+      <button type="button" class="btn btn-sm btn-ghost" data-action="reset">Reset</button>
+    </div>
+  </form>
+  <div class="out" data-out aria-live="polite"></div>
+</div>
+
+<script>
+  import { mountCalc, num, esc } from '../../app/calc';
+  import { storeProceeds } from '../../lib/appmath';
+  import { STOREFRONTS, COMMISSION } from '../../data/appstore';
+
+  mountCalc(document.querySelector<HTMLElement>('[data-calc="play"]')!, (v) => {
+    const sf = STOREFRONTS.find((s) => s.code === v.sf) ?? STOREFRONTS[0];
+    const fmt = new Intl.NumberFormat(undefined, { style: 'currency', currency: sf.currency, maximumFractionDigits: sf.currency === 'JPY' || sf.currency === 'KRW' ? 0 : 2 });
+    const price = Math.max(0, num(v.price));
+    const rate = num(v.rate, 15);
+    const play = storeProceeds(price, sf.vat, rate);
+    const apple = storeProceeds(price, sf.vat, rate === COMMISSION.google.reduced ? COMMISSION.apple.reduced : COMMISSION.apple.standard);
+    return `<div class="big"><div class="k">You receive per sale</div><div class="v">${fmt.format(play.proceeds)}</div>
+        <div class="s">${(100 - play.effectiveRate * 100).toFixed(1)}% of the ${fmt.format(price)} price · ${esc(sf.name)}</div></div>
+      <table class="kv">
+        <tr><th>Price</th><td>${fmt.format(price)}</td></tr>
+        <tr><th>Tax removed (${sf.vat}%)</th><td>−${fmt.format(play.tax)}</td></tr>
+        <tr><th>Google service fee (${rate}%)</th><td>−${fmt.format(play.commission)}</td></tr>
+        <tr><th><strong>Your earnings</strong></th><td><strong>${fmt.format(play.proceeds)}</strong></td></tr>
+      </table>
+      <table class="kv">
+        <tr><th>Same sale on the App Store</th><td>${fmt.format(apple.proceeds)}</td></tr>
+        <tr><th>Per 1,000 sales (Google Play)</th><td>${fmt.format(play.proceeds * 1000)}</td></tr>
+      </table>`;
+  });
+</script>

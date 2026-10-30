@@ -1,0 +1,27 @@
+---
+import Base from '../layouts/Base.astro';
+import { SITE } from '../data/site';
+import { u } from '../lib/url';
+---
+<Base title={`Terms of Use | ${SITE.name}`} description={`Terms for using the free ${SITE.name} calculators and tools.`}>
+  <div class="container" style="padding-top:32px">
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href={u('/')}>Home</a> / <span aria-current="page">Terms</span></nav>
+    <article class="prose">
+      <h1>Terms of use</h1>
+      <p class="muted small">Last updated 19 October 2026</p>
+      <p>{SITE.name} provides free calculators and tools for app developers. By using the site you agree to these terms.</p>
+      <h2>Estimates, not advice</h2>
+      <p>Results are estimates based on the inputs you provide and on published rules and rates that change over time. They are not financial, tax or legal advice. Apple and Google publish the authoritative figures in App Store Connect and Play Console; check them before making business decisions.</p>
+      <h2>No warranty</h2>
+      <p>The tools are provided “as is”, without warranty of any kind. We work to keep the maths and reference data correct, and each page lists its sources, but we can’t guarantee that every result is accurate or current. To the extent the law allows, we are not liable for losses arising from use of the site.</p>
+      <h2>Files you generate</h2>
+      <p>Files created with the site (icons, screenshots, privacy manifests) are yours to use for any purpose. You are responsible for checking that they meet Apple’s and Google’s current requirements.</p>
+      <h2>Trademarks</h2>
+      <p>Apple, App Store, iPhone, iPad, Xcode and Apple Pay are trademarks of Apple Inc. Google Play and AdMob are trademarks of Google LLC. {SITE.name} is independent and not affiliated with, endorsed by or sponsored by Apple or Google. Names are used only to describe what the tools work with.</p>
+      <h2>Links</h2>
+      <p>Some links go to other websites, including affiliate and sponsored links (see the <a href={u('/disclosure/')}>disclosure</a>). We are not responsible for the content of other sites.</p>
+      <h2>Changes and contact</h2>
+      <p>We may update these terms; the date above shows the latest version. Questions? Contact {SITE.author} via the <a href={u('/about/')}>About page</a>.</p>
+    </article>
+  </div>
+</Base>

@@ -1,0 +1,42 @@
+<div class="calc" data-calc="mrr">
+  <form>
+    <p class="note" style="margin:0">Enter paying subscribers and price per plan (USD, customer price).</p>
+    {[['w', 'Weekly', 300, 4.99], ['m', 'Monthly', 800, 9.99], ['y', 'Yearly', 1500, 39.99]].map(([k, label, subs, price]) => (
+      <div class="row2">
+        <div class="field"><label for={`${k}s`}>{label} subscribers</label><input class="input" id={`${k}s`} name={`${k}s`} type="number" min="0" step="1" value={subs} /></div>
+        <div class="field"><label for={`${k}p`}>{label} price</label><input class="input" id={`${k}p`} name={`${k}p`} type="number" min="0" step="0.01" value={price} /></div>
+      </div>
+    ))}
+    <div class="row2">
+      <div class="field"><label for="cm">Commission %</label><input class="input" id="cm" name="cm" type="number" min="0" max="100" step="1" value="15" /></div>
+      <div class="field"><label for="vat">Avg. VAT %</label><input class="input" id="vat" name="vat" type="number" min="0" max="30" step="0.5" value="8" /></div>
+    </div>
+    <div class="share-row"><button type="button" class="btn btn-sm" data-action="copy-link">Copy link to this result</button><button type="button" class="btn btn-sm btn-ghost" data-action="reset">Reset</button></div>
+  </form>
+  <div class="out" data-out aria-live="polite"></div>
+</div>
+<script>
+  import { mountCalc, num } from '../../app/calc';
+  import { toMonthly } from '../../lib/appmath';
+  const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+  mountCalc(document.querySelector<HTMLElement>('[data-calc="mrr"]')!, (v) => {
+    const plans = [
+      { k: 'Weekly', subs: num(v.ws), mrr: num(v.ws) * toMonthly(num(v.wp), 'week') },
+      { k: 'Monthly', subs: num(v.ms), mrr: num(v.ms) * toMonthly(num(v.mp), 'month') },
+      { k: 'Yearly', subs: num(v.ys), mrr: num(v.ys) * toMonthly(num(v.yp), 'year') },
+    ];
+    const gross = plans.reduce((a, p) => a + p.mrr, 0);
+    const factor = (1 / (1 + num(v.vat) / 100)) * (1 - num(v.cm) / 100);
+    const subs = plans.reduce((a, p) => a + p.subs, 0);
+    const cls = ['c1', 'c2', 'c4'];
+    return `<div class="big"><div class="k">MRR (gross)</div><div class="v">${usd.format(gross)}</div><div class="s">ARR ${usd.format(gross * 12)} · ${subs.toLocaleString()} subscribers</div>
+        <div class="bar-split" aria-hidden="true">${plans.map((p, i) => `<i class="${cls[i]}" style="width:${gross ? (p.mrr / gross) * 100 : 0}%"></i>`).join('')}</div>
+        <div class="legend">${plans.map((p, i) => `<span><b class="${cls[i]}"></b>${p.k} ${gross ? Math.round((p.mrr / gross) * 100) : 0}%</span>`).join('')}</div></div>
+      <table class="kv">
+        ${plans.map((p) => `<tr><th>${p.k} MRR</th><td>${usd.format(p.mrr)}</td></tr>`).join('')}
+        <tr><th><strong>MRR after VAT &amp; commission</strong></th><td><strong>${usd.format(gross * factor)}</strong></td></tr>
+        <tr><th><strong>ARR after VAT &amp; commission</strong></th><td><strong>${usd.format(gross * factor * 12)}</strong></td></tr>
+        <tr><th>ARPPU (gross, monthly)</th><td>${usd.format(subs ? gross / subs : 0)}</td></tr>
+      </table>`;
+  });
+</script>

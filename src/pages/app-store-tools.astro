@@ -1,0 +1,15 @@
+---
+import Hub from '../components/Hub.astro';
+import { u } from '../lib/url';
+---
+<Hub section="ios" title="App Store Calculators & Tools for iOS Developers" description="Free App Store tools for iOS developers: fees with VAT, web checkout vs IAP, EU alternative terms, Google Play fees, MRR/ARR, LTV, churn, ROAS, paywall, ratings, privacy manifest, screenshots, icons and ASO."
+  h1="App Store tools for iOS developers" lead="The business maths and submission assets every app needs, built by an iOS developer and accurate on the details (like VAT).">
+  <section class="section container"><div class="prose">
+    <h2>From price to profit</h2>
+    <p>Start with the <a href={u('/app-store-fee-calculator/')}>fee calculator</a> to see what you really receive per sale, model the month with the <a href={u('/app-revenue-calculator/')}>revenue</a> and <a href={u('/subscription-mrr-calculator/')}>MRR</a> calculators, then check whether paid acquisition works with <a href={u('/app-ltv-calculator/')}>LTV</a>, <a href={u('/app-churn-calculator/')}>churn</a> and <a href={u('/app-roas-calculator/')}>ROAS</a>.</p>
+    <h2>Pricing and payment options</h2>
+    <p>Compare two paywall offers with the <a href={u('/paywall-trial-calculator/')}>paywall &amp; trial calculator</a>, decide whether to <a href={u('/web-checkout-vs-in-app-purchase-calculator/')}>link out to web checkout</a> in the US, see what the <a href={u('/eu-alternative-terms-calculator/')}>EU alternative terms</a> would cost, or weigh <a href={u('/admob-revenue-calculator/')}>ads</a> against subscriptions.</p>
+    <h2>Before you submit</h2>
+    <p>Generate your <a href={u('/privacy-manifest-generator/')}>privacy manifest</a>, check <a href={u('/app-store-screenshot-sizes/')}>screenshot sizes</a>, build your <a href={u('/app-icon-generator/')}>app icon set</a> and tune your <a href={u('/aso-keyword-character-counter/')}>metadata</a>.</p>
+  </div></section>
+</Hub>

@@ -1,0 +1,30 @@
+<div class="calc" data-calc="churn">
+  <form>
+    <div class="field"><label for="start">Subscribers at start of month</label><input class="input" id="start" name="start" type="number" min="1" step="1" value="2000" /></div>
+    <div class="row2">
+      <div class="field"><label for="added">New subscribers</label><input class="input" id="added" name="added" type="number" min="0" step="1" value="350" /></div>
+      <div class="field"><label for="lost">Cancelled / expired</label><input class="input" id="lost" name="lost" type="number" min="0" step="1" value="160" /></div>
+    </div>
+    <div class="share-row"><button type="button" class="btn btn-sm" data-action="copy-link">Copy link to this result</button><button type="button" class="btn btn-sm btn-ghost" data-action="reset">Reset</button></div>
+  </form>
+  <div class="out" data-out aria-live="polite"></div>
+</div>
+<script>
+  import { mountCalc, num } from '../../app/calc';
+  mountCalc(document.querySelector<HTMLElement>('[data-calc="churn"]')!, (v) => {
+    const start = Math.max(1, num(v.start));
+    const churn = num(v.lost) / start;
+    const end = start + num(v.added) - num(v.lost);
+    const annual = 1 - Math.pow(1 - Math.min(churn, 1), 12);
+    const quick = num(v.lost) > 0 ? num(v.added) / num(v.lost) : Infinity;
+    const pct = (x: number) => `${(x * 100).toFixed(2)}%`;
+    return `<div class="big"><div class="k">Monthly churn</div><div class="v">${pct(churn)}</div><div class="s">Retention ${pct(1 - churn)} · annualised churn ${pct(annual)}</div></div>
+      <table class="kv">
+        <tr><th>Subscribers at end of month</th><td>${end.toLocaleString()}</td></tr>
+        <tr><th>Net growth</th><td>${pct((end - start) / start)}</td></tr>
+        <tr><th>Average subscriber lifetime</th><td>${churn > 0 ? (1 / churn).toFixed(1) + ' months' : '∞'}</td></tr>
+        <tr><th>Quick ratio (new ÷ lost)</th><td>${Number.isFinite(quick) ? quick.toFixed(2) : '∞'}</td></tr>
+      </table>
+      <p class="note">A quick ratio above 1 means you are growing. Above 4 is considered very efficient growth.</p>`;
+  });
+</script>

@@ -1,0 +1,135 @@
+---
+import Icon from '../Icon.astro';
+const slots = [
+  { id: 'light', label: 'Default (light) icon', hint: 'Required · 1024 × 1024' },
+  { id: 'dark', label: 'Dark icon', hint: 'Optional · iOS 18+' },
+  { id: 'tinted', label: 'Tinted icon', hint: 'Optional · grayscale, iOS 18+' },
+];
+---
+<div class="calc" data-tool="icon">
+  <form>
+    {slots.map((s) => (
+      <div class="field">
+        <span class="label">{s.label} <span class="hint">{s.hint}</span></span>
+        <label class="dropzone" style="min-height:96px;padding:14px" data-slot={s.id}>
+          <input type="file" accept="image/png,image/jpeg" class="visually-hidden" data-file={s.id} />
+          <span class="small"><Icon name="upload" size={18} /> <span data-name={s.id}>Choose or drop an image</span></span>
+        </label>
+      </div>
+    ))}
+    <div class="row2">
+      <label class="field"><span class="label">Background for transparent areas</span><input type="color" name="bg" value="#ffffff" style="width:100%;height:44px;border-radius:10px;border:1px solid var(--border-strong)" /></label>
+      <div class="field"><span class="label">Include</span>
+        <label class="switch"><input type="checkbox" name="mac" checked /> macOS icon sizes</label>
+      </div>
+    </div>
+    <p class="note">App Store Connect rejects icons with transparency or an alpha channel, so the iOS icon is flattened onto this colour and saved as an RGB PNG. macOS icons keep transparency, because Mac icons have their own shape.</p>
+    <button type="button" class="btn btn-primary btn-lg" data-generate disabled><Icon name="download" size={20} /> Download AppIcon.appiconset</button>
+  </form>
+  <div class="out" data-out aria-live="polite">
+    <div class="big"><div class="k">Preview</div>
+      <div style="display:flex;gap:18px;align-items:end;flex-wrap:wrap;margin-top:12px" data-preview>
+        <p class="muted small">Add an image to preview it with the iOS icon mask.</p>
+      </div>
+    </div>
+    <ul class="checklist" data-checks></ul>
+  </div>
+</div>
+
+<script>
+  import { icon } from '../../lib/icons';
+  import { esc } from '../../app/calc';
+  import { canvasToRgbPng } from '../../lib/png';
+  const root = document.querySelector<HTMLElement>('[data-tool="icon"]')!;
+  const imgs: Record<string, ImageBitmap | undefined> = {};
+  const names: Record<string, string> = {};
+  const MAC = [16, 32, 128, 256, 512];
+
+  function square(src: ImageBitmap, size: number, bg?: string) {
+    const c = document.createElement('canvas');
+    c.width = c.height = size;
+    const ctx = c.getContext('2d')!;
+    if (bg) { ctx.fillStyle = bg; ctx.fillRect(0, 0, size, size); }
+    const side = Math.min(src.width, src.height); // centre-crop non-square images
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(src, (src.width - side) / 2, (src.height - side) / 2, side, side, 0, 0, size, size);
+    return c;
+  }
+  const toBlob = (c: HTMLCanvasElement) => new Promise<Blob>((r) => c.toBlob((b) => r(b!), 'image/png'));
+
+  function render() {
+    const bg = (root.querySelector<HTMLInputElement>('input[name=bg]')!).value;
+    const prev = root.querySelector<HTMLElement>('[data-preview]')!;
+    const checks: string[] = [];
+    const light = imgs.light;
+    root.querySelector<HTMLButtonElement>('[data-generate]')!.disabled = !light;
+    if (!light) return;
+    prev.innerHTML = (['light', 'dark', 'tinted'] as const)
+      .filter((k) => imgs[k])
+      .map((k) => {
+        const url = square(imgs[k]!, 180, k === 'light' ? bg : undefined).toDataURL();
+        return `<figure style="margin:0;text-align:center"><img src="${url}" alt="${k} icon preview" width="90" height="90" style="border-radius:22.37%;box-shadow:var(--shadow);${k !== 'light' ? 'background:#000' : ''}"><figcaption class="small muted">${k}</figcaption></figure>`;
+      })
+      .join('') + `<figure style="margin:0;text-align:center"><img src="${square(light, 120, bg).toDataURL()}" alt="small preview" width="40" height="40" style="border-radius:22.37%"><figcaption class="small muted">small</figcaption></figure>`;
+    const ok = (t: string) => `<li><span class="ok">${icon('check', 16)}</span>${esc(t)}</li>`;
+    const warn = (t: string) => `<li><span class="warn">${icon('alert', 16)}</span>${esc(t)}</li>`;
+    checks.push(light.width >= 1024 && light.height >= 1024 ? ok(`Source is ${light.width} × ${light.height}`) : warn(`Source is ${light.width} × ${light.height}. Use at least 1024 × 1024 for a sharp icon.`));
+    checks.push(light.width === light.height ? ok('Square') : warn('Not square: it will be centre-cropped'));
+    root.querySelector<HTMLElement>('[data-checks]')!.innerHTML = checks.join('');
+  }
+
+  async function load(slot: string, file: File) {
+    imgs[slot]?.close();
+    imgs[slot] = await createImageBitmap(file);
+    names[slot] = file.name;
+    root.querySelector<HTMLElement>(`[data-name="${slot}"]`)!.textContent = file.name;
+    render();
+  }
+
+  async function generate() {
+    const bg = (root.querySelector<HTMLInputElement>('input[name=bg]')!).value;
+    const mac = (root.querySelector<HTMLInputElement>('input[name=mac]')!).checked;
+    const JSZip = (await import('jszip')).default;
+    const zip = new JSZip();
+    const dir = zip.folder('AppIcon.appiconset')!;
+    const images: Record<string, unknown>[] = [];
+    // App Store icon: flattened AND saved without an alpha channel.
+    dir.file('AppIcon.png', await canvasToRgbPng(square(imgs.light!, 1024, bg)));
+    images.push({ filename: 'AppIcon.png', idiom: 'universal', platform: 'ios', size: '1024x1024' });
+    if (imgs.dark) {
+      dir.file('AppIcon-Dark.png', await toBlob(square(imgs.dark, 1024)));
+      images.push({ appearances: [{ appearance: 'luminosity', value: 'dark' }], filename: 'AppIcon-Dark.png', idiom: 'universal', platform: 'ios', size: '1024x1024' });
+    }
+    if (imgs.tinted) {
+      dir.file('AppIcon-Tinted.png', await toBlob(square(imgs.tinted, 1024)));
+      images.push({ appearances: [{ appearance: 'luminosity', value: 'tinted' }], filename: 'AppIcon-Tinted.png', idiom: 'universal', platform: 'ios', size: '1024x1024' });
+    }
+    if (mac) {
+      for (const pt of MAC)
+        for (const scale of [1, 2]) {
+          const px = pt * scale;
+          const name = `mac-${pt}x${pt}@${scale}x.png`;
+          dir.file(name, await toBlob(square(imgs.light!, px)));
+          images.push({ filename: name, idiom: 'mac', scale: `${scale}x`, size: `${pt}x${pt}` });
+        }
+    }
+    dir.file('Contents.json', JSON.stringify({ images, info: { author: 'xcode', version: 1 } }, null, 2));
+    const blob = await zip.generateAsync({ type: 'blob' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'AppIcon.appiconset.zip';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
+
+  root.querySelectorAll<HTMLInputElement>('[data-file]').forEach((inp) =>
+    inp.addEventListener('change', () => { if (inp.files?.[0]) void load(inp.dataset.file!, inp.files[0]); }),
+  );
+  root.querySelectorAll<HTMLElement>('[data-slot]').forEach((z) => {
+    z.addEventListener('dragover', (e) => { e.preventDefault(); z.classList.add('drag'); });
+    z.addEventListener('dragleave', () => z.classList.remove('drag'));
+    z.addEventListener('drop', (e) => { e.preventDefault(); z.classList.remove('drag'); const f = e.dataTransfer?.files[0]; if (f) void load(z.dataset.slot!, f); });
+  });
+  root.querySelector('input[name=bg]')!.addEventListener('input', render);
+  root.querySelector('[data-generate]')!.addEventListener('click', () => void generate());
+</script>

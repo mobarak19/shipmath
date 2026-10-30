@@ -1,0 +1,40 @@
+---
+import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
+import ToolGrid from '../components/ToolGrid.astro';
+import Faq from '../components/Faq.astro';
+import { SITE } from '../data/site';
+import { SECTIONS, toolsIn } from '../data/tools';
+import { u } from '../lib/url';
+
+const title = `${SITE.name}: App Store Fee, Revenue & Subscription Calculators`;
+const description = 'Free tools for iOS developers: App Store fees with VAT, web checkout vs IAP, EU terms, MRR/ARR, LTV, ROAS, paywall maths, privacy manifest, screenshots and icons.';
+const faq: [string, string][] = [
+  ['Are these tools free?', 'Yes. Every calculator is free, needs no account and runs in your browser.'],
+  ['Does the fee calculator include VAT?', 'Yes. Apple removes VAT before taking its commission, so proceeds in VAT countries are lower than price × 85%. The calculator handles 25 storefronts.'],
+  ['Should I add web checkout to my US app?', 'Since the 2025 US court ruling you can link to web purchases. Whether it pays depends on how many buyers finish paying on the web; the web checkout calculator shows your break-even.'],
+  ['What about AI costs in my app?', `See our sister site ${SITE.sister.name} for LLM API costs, AI SaaS profit and GPU calculators.`],
+];
+---
+<Base title={title} description={description}>
+  <section class="hero container">
+    <span class="eyebrow"><Icon name="phone" size={15} /> Free tools for iOS developers</span>
+    <h1>Know your App Store numbers before you ship</h1>
+    <p class="lead">What Apple keeps from each sale (VAT included), what your subscribers are worth, and the assets App Store Connect needs.</p>
+    <div class="section-switch">
+      <a class="btn btn-primary btn-lg" href={u('/app-store-fee-calculator/')}><Icon name="dollar" size={20} /> App Store fee calculator</a>
+      <a class="btn btn-lg" href={u('/subscription-mrr-calculator/')}><Icon name="repeat" size={20} /> MRR &amp; ARR</a>
+    </div>
+  </section>
+  <section class="section container" aria-labelledby="sec-ios">
+    <div class="section-head"><h2 id="sec-ios" style="display:flex;gap:10px;align-items:center"><Icon name={SECTIONS.ios.icon} size={24} /> {SECTIONS.ios.name}</h2><p>{SECTIONS.ios.text}</p></div>
+    <ToolGrid tools={toolsIn('ios')} />
+  </section>
+  <section class="section container">
+    <div class="privacy-banner"><div class="ti"><Icon name="bot" size={26} /></div><div>
+      <h3 style="margin:0">Adding AI to your app?</h3>
+      <p>Estimate API costs per user, break-even and the subscription price you need on <a href={SITE.sister.url} target="_blank" rel="noopener">{SITE.sister.name}</a>, our sister site with prices for 260+ models updated daily.</p>
+    </div></div>
+  </section>
+  <Faq items={faq} />
+</Base>

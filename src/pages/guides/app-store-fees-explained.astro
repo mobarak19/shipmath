@@ -1,0 +1,38 @@
+---
+import Guide from '../../layouts/Guide.astro';
+import { u } from '../../lib/url';
+---
+<Guide title="App Store Fees Explained: Commission, VAT & Proceeds" description="How Apple’s 15% and 30% App Store commission really works, why VAT is removed first, and what you actually receive per sale in each country."
+  h1="App Store fees explained" updated="2026-10-06" tools={['app-store-fee-calculator', 'app-revenue-calculator', 'subscription-mrr-calculator']} offers="guideApp">
+  <p>Most developers know “Apple takes 30%”. Fewer realise that in most countries <strong>tax comes out first</strong>, so the real share you keep is lower than 70% or 85% of the price your customers see.</p>
+  <h2>Step 1: tax is removed</h2>
+  <p>In the US and Canada, App Store prices are shown <em>before</em> sales tax. Almost everywhere else, the price <em>includes</em> VAT or GST, and Apple remits that tax for you. Before any commission is calculated, the tax part is taken out:</p>
+  <pre><code>net price = price ÷ (1 + VAT rate)</code></pre>
+  <h2>Step 2: Apple’s commission</h2>
+  <ul>
+    <li><strong>30%</strong> standard rate.</li>
+    <li><strong>15%</strong> for members of the Small Business Program (up to $1M proceeds in the previous calendar year). You have to apply.</li>
+    <li><strong>15%</strong> for auto-renewable subscriptions after the subscriber’s first year of paid service.</li>
+  </ul>
+  <h2>Worked example</h2>
+  <table>
+    <thead><tr><th></th><th>United States</th><th>Germany</th><th>United Kingdom</th></tr></thead>
+    <tbody>
+      <tr><td>Customer price</td><td>$9.99</td><td>€9.99</td><td>£9.99</td></tr>
+      <tr><td>Tax included</td><td>none (added at checkout)</td><td>19% VAT</td><td>20% VAT</td></tr>
+      <tr><td>Net price</td><td>$9.99</td><td>€8.39</td><td>£8.33</td></tr>
+      <tr><td>Commission at 15%</td><td>$1.50</td><td>€1.26</td><td>£1.25</td></tr>
+      <tr><td><strong>You receive</strong></td><td><strong>$8.49</strong></td><td><strong>€7.14</strong></td><td><strong>£7.08</strong></td></tr>
+    </tbody>
+  </table>
+  <p class="small muted">Amounts rounded to the cent; calculated from unrounded values.</p>
+  <p>Same price, same commission, about 16% less money in VAT countries. If most of your users are in Europe, revenue projections based on “price × 85%” will be too optimistic.</p>
+  <h2>Other details that change your proceeds</h2>
+  <ul>
+    <li><strong>Price points</strong>: Apple uses fixed price points per storefront and publishes exact proceeds for each in App Store Connect.</li>
+    <li><strong>Digital services taxes</strong> in some countries reduce proceeds slightly further.</li>
+    <li><strong>Refunds</strong> are deducted from proceeds.</li>
+    <li><strong>Regional rules</strong>: alternative business terms in the EU and changes to linking out to web purchases (e.g. in the US) can change the maths for your app. Check what applies to you in App Store Connect.</li>
+  </ul>
+  <p>Run your own numbers with the <a href={u('/app-store-fee-calculator/')}>App Store fee calculator</a>, which handles VAT for 25 storefronts and compares Google Play and web checkout.</p>
+</Guide>

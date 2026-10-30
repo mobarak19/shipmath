@@ -1,0 +1,42 @@
+---
+import Guide from '../../layouts/Guide.astro';
+import { u } from '../../lib/url';
+---
+<Guide title="Web Checkout vs In-App Purchase After the 2025 US Ruling" description="What the April 2025 Epic v. Apple order means for US apps: linking to web purchases, Stripe vs Apple fees, conversion drop-off and when web checkout earns more."
+  h1="Web checkout vs in-app purchase after the 2025 US ruling" updated="2026-10-19" tools={['web-checkout-vs-in-app-purchase-calculator', 'app-store-fee-calculator', 'paywall-trial-calculator']} offers="guideApp">
+  <p>For years, US apps couldn’t tell users they could pay less on the web. In 2025 that changed, and “should we add web checkout?” became a real question for every subscription app. The answer depends less on fees than on how many buyers you lose on the way to the web.</p>
+
+  <h2>What changed in 2025</h2>
+  <p>On 30 April 2025, the US District Court in <em>Epic Games v. Apple</em> found that Apple had not complied with a 2021 order about steering users to other payment options. The court ordered Apple, for apps on the <strong>US storefront</strong>, to stop:</p>
+  <ul>
+    <li>charging a commission on purchases made outside the app through a link,</li>
+    <li>restricting the wording, style and placement of buttons and links to the web, and</li>
+    <li>showing warning screens that discourage users from leaving the app.</li>
+  </ul>
+  <p>Apple updated its App Review Guidelines for the US within days, and large apps such as Spotify and Kindle added links to buy on the web. Apple appealed, and later decisions could change whether Apple may charge some fee on linked purchases. <strong>Check Apple’s current guidelines before you build</strong>; the calculator lets you add an Apple fee on web sales to test that scenario.</p>
+  <div class="callout"><p>This applies to the US App Store. In the EU, link-outs fall under Apple’s separate <a href={u('/eu-alternative-terms-calculator/')}>alternative business terms</a>, and other countries have their own rules.</p></div>
+
+  <h2>Fees: what you keep per sale</h2>
+  <table>
+    <thead><tr><th>$9.99 sale (US)</th><th>In-app, 15%</th><th>In-app, 30%</th><th>Web, 2.9% + $0.30</th></tr></thead>
+    <tbody>
+      <tr><td>Fees</td><td>$1.50</td><td>$3.00</td><td>$0.59</td></tr>
+      <tr><td><strong>You keep</strong></td><td><strong>$8.49</strong></td><td><strong>$6.99</strong></td><td><strong>$9.40</strong></td></tr>
+    </tbody>
+  </table>
+  <p>Per sale, web checkout earns about 11% more than in-app purchase at 15%, and about 34% more at 30%. But you also take on work Apple did for you: sales tax, refunds, failed-payment recovery and support. A merchant of record such as Paddle or Lemon Squeezy handles tax for a higher fee (often around 5% plus a fixed fee).</p>
+
+  <h2>Conversion: the number that decides it</h2>
+  <p>The in-app purchase sheet is one tap with Face ID. A web checkout means leaving the app, possibly signing in, and entering a card unless Apple Pay or a saved card is available. Some buyers drop off at each step. The break-even is simple:</p>
+  <pre><code>break-even web conversion = in-app proceeds ÷ web proceeds</code></pre>
+  <p>At 15% commission that is $8.49 ÷ $9.40 ≈ <strong>90%</strong>: if more than 10% of buyers who tap your web link don’t finish, you earn less than with in-app purchase. At 30% commission the break-even falls to about <strong>74%</strong>, so web checkout is much easier to justify for developers outside the Small Business Program.</p>
+
+  <h2>How to decide</h2>
+  <ol>
+    <li><strong>Check your commission rate.</strong> At 30%, web checkout is likely worth testing. At 15%, it only works if your web flow converts almost as well as the native sheet.</li>
+    <li><strong>Keep in-app purchase as well.</strong> Offer the web as an option (for example with a discount), and let buyers who prefer Apple Pay in the app pay there.</li>
+    <li><strong>Make the web flow short.</strong> Pre-fill the account from the app, support Apple Pay on the web and return users to the app automatically.</li>
+    <li><strong>A/B test it.</strong> Show the web option to part of your US users and compare proceeds per paywall view, not just fees.</li>
+  </ol>
+  <p>Model your own numbers with the <a href={u('/web-checkout-vs-in-app-purchase-calculator/')}>web checkout vs in-app purchase calculator</a>.</p>
+</Guide>

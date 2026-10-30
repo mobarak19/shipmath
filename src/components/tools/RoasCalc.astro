@@ -1,0 +1,54 @@
+---
+import { u } from '../../lib/url';
+---
+<div class="calc" data-calc="roas">
+  <form>
+    <div class="row2">
+      <div class="field"><label for="ro-spend">Ad spend</label><input class="input" id="ro-spend" name="spend" type="number" min="0" step="100" value="5000" /></div>
+      <div class="field"><label for="ro-cpi">Cost per install (CPI)</label><input class="input" id="ro-cpi" name="cpi" type="number" min="0.01" step="0.05" value="2.5" /></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label for="ro-conv">Install → paid %</label><input class="input" id="ro-conv" name="conv" type="number" min="0" max="100" step="0.1" value="5" /></div>
+      <div class="field"><label for="ro-arpu">Monthly proceeds per payer <span class="hint">after fees</span></label><input class="input" id="ro-arpu" name="arpu" type="number" min="0" step="0.1" value="7" /></div>
+    </div>
+    <div class="field"><label for="ro-churn">Monthly churn %</label><input class="input" id="ro-churn" name="churn" type="number" min="0" max="100" step="0.5" value="12" /></div>
+    <div class="share-row">
+      <button type="button" class="btn btn-sm" data-action="copy-link">Copy link to this result</button>
+      <button type="button" class="btn btn-sm btn-ghost" data-action="reset">Reset</button>
+    </div>
+    <p class="note">For an annual plan, enter the proceeds per year ÷ 12 and an equivalent monthly churn. Get proceeds per sale from the <a href={u('/app-store-fee-calculator/')}>fee calculator</a>.</p>
+  </form>
+  <div class="out" data-out aria-live="polite"></div>
+</div>
+
+<script>
+  import { mountCalc, num } from '../../app/calc';
+  import { paidPeriods } from '../../lib/appmath';
+
+  const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+  mountCalc(document.querySelector<HTMLElement>('[data-calc="roas"]')!, (v) => {
+    const spend = Math.max(0, num(v.spend));
+    const cpi = Math.max(0.01, num(v.cpi, 1));
+    const installs = spend / cpi;
+    const payers = installs * (num(v.conv) / 100);
+    const arpu = num(v.arpu);
+    const churn = num(v.churn);
+    const revenueBy = (m: number) => payers * arpu * paidPeriods(m, churn);
+    const roas = (m: number) => (spend ? revenueBy(m) / spend : 0);
+    let payback = 0;
+    for (let m = 1; m <= 36; m++) if (roas(m) >= 1) { payback = m; break; }
+    const maxCpi = (num(v.conv) / 100) * arpu * paidPeriods(12, churn);
+    const pct = (x: number) => `${Math.round(x * 100)}%`;
+    return `<div class="big"><div class="k">12-month ROAS</div><div class="v">${pct(roas(12))}</div>
+        <div class="s">${payback ? `Pays back in month ${payback}` : 'Doesn’t pay back within 36 months'} · ${Math.round(payers).toLocaleString()} paying users</div></div>
+      <table class="kv">
+        ${[1, 3, 6, 12, 24].map((m) => `<tr><th>Month ${m}: ${usd.format(revenueBy(m))}</th><td>${pct(roas(m))}</td></tr>`).join('')}
+      </table>
+      <table class="kv">
+        <tr><th>Installs</th><td>${Math.round(installs).toLocaleString()}</td></tr>
+        <tr><th>Cost per paying user</th><td>${payers ? usd.format(spend / payers) : '—'}</td></tr>
+        <tr><th>Break-even CPI (12 months)</th><td>${usd.format(maxCpi)}</td></tr>
+      </table>
+      <p class="note">ROAS = proceeds earned so far ÷ ad spend. Revenue counts a payment at the start of each month a subscriber stays.</p>`;
+  });
+</script>

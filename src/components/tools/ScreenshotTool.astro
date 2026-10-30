@@ -1,0 +1,155 @@
+---
+import Icon from '../Icon.astro';
+import { SCREENSHOT_SPECS, SCREENSHOT_SPECS_SOURCE, RULES_REVIEWED } from '../../data/appstore';
+---
+<div data-tool="shots">
+  <div class="dropzone" tabindex="0" role="button" aria-describedby="shots-help" data-drop style="min-height:220px">
+    <div>
+      <div class="dz-icon"><Icon name="image" size={30} /></div>
+      <h2>Drop App Store screenshots</h2>
+      <p id="shots-help">PNG or JPEG. Check which device size each matches, then resize to any accepted size.</p>
+      <div class="dz-actions"><button type="button" class="btn btn-primary btn-lg" data-pick><Icon name="images" size={20} /> Choose screenshots</button></div>
+      <div class="dz-local"><Icon name="lock" size={15} /> Processed on your device. Nothing is uploaded.</div>
+    </div>
+  </div>
+  <input type="file" accept="image/png,image/jpeg" multiple hidden />
+  <div data-results hidden style="margin-top:18px">
+    <div class="toolbar">
+      <label class="visually-hidden" for="target">Resize to</label>
+      <select class="select" id="target" style="max-width:340px" data-target>
+        {SCREENSHOT_SPECS.map((s) => (
+          <optgroup label={s.device}>
+            {s.sizes.map(([w, h]) => <option value={`${w}x${h}`}>{s.device}: {w} × {h} (portrait)</option>)}
+            {s.sizes.map(([w, h]) => <option value={`${h}x${w}`}>{s.device}: {h} × {w} (landscape)</option>)}
+          </optgroup>
+        ))}
+      </select>
+      <div class="seg" role="radiogroup" aria-label="Resize mode">
+        <label><input type="radio" name="mode" value="fill" checked /><span>Fill (crop)</span></label>
+        <label><input type="radio" name="mode" value="fit" /><span>Fit (pad)</span></label>
+      </div>
+      <label class="switch">Pad colour <input type="color" value="#ffffff" data-bg style="width:36px;height:28px;padding:0;border:0;background:none" /></label>
+      <span class="grow"></span>
+      <button type="button" class="btn btn-primary" data-resize><Icon name="download" size={18} /> Resize &amp; download</button>
+    </div>
+    <div class="table-wrap"><table class="batch-table" style="min-width:640px"><thead><tr><th><span style="display:block;padding:10px 12px"></span></th><th><span style="display:block;padding:10px 12px">File</span></th><th><span style="display:block;padding:10px 12px">Size</span></th><th><span style="display:block;padding:10px 12px">Matches</span></th><th><span style="display:block;padding:10px 12px">Checks</span></th></tr></thead><tbody data-rows></tbody></table></div>
+  </div>
+  <h3 class="section-title"><Icon name="phone" size={18} /> Accepted screenshot sizes (portrait, in pixels)</h3>
+  <div class="table-wrap">
+    <table class="data-table">
+      <thead><tr><th><button disabled>Device</button></th><th><button disabled>Sizes</button></th><th><button disabled>Notes</button></th></tr></thead>
+      <tbody>
+        {SCREENSHOT_SPECS.map((s) => (
+          <tr><td><strong>{s.device}</strong>{s.required && <span class="tag ok">required</span>}</td><td>{s.sizes.map(([w, h]) => `${w} × ${h}`).join(' · ')}</td><td class="muted" style="white-space:normal">{s.note ?? ''}</td></tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+  <p class="note" style="margin-top:8px">Landscape = swap width and height. Based on Apple’s <a href={SCREENSHOT_SPECS_SOURCE} rel="noopener" target="_blank">screenshot specifications</a> (reviewed {RULES_REVIEWED}). Apple adds sizes with new devices, so check before submitting.</p>
+</div>
+
+<script>
+  import { SCREENSHOT_SPECS } from '../../data/appstore';
+  import { esc } from '../../app/calc';
+  import { icon } from '../../lib/icons';
+  import { canvasToRgbPng } from '../../lib/png';
+
+  const root = document.querySelector<HTMLElement>('[data-tool="shots"]')!;
+  const input = root.querySelector<HTMLInputElement>('input[type=file]')!;
+  const drop = root.querySelector<HTMLElement>('[data-drop]')!;
+  const rows = root.querySelector<HTMLElement>('[data-rows]')!;
+  type Item = { file: File; url: string; w: number; h: number; alpha: boolean };
+  let items: Item[] = [];
+
+  function match(w: number, h: number) {
+    for (const s of SCREENSHOT_SPECS)
+      for (const [a, b] of s.sizes) {
+        if (a === w && b === h) return `${s.device} portrait`;
+        if (a === h && b === w) return `${s.device} landscape`;
+      }
+    return '';
+  }
+  function nearest(w: number, h: number) {
+    const r = Math.min(w, h) / Math.max(w, h);
+    let best = { d: Infinity, label: '' };
+    for (const s of SCREENSHOT_SPECS)
+      for (const [a, b] of s.sizes) {
+        const d = Math.abs(a / b - r);
+        if (d < best.d) best = { d, label: `${s.device} (${w > h ? `${b} × ${a}` : `${a} × ${b}`})` };
+      }
+    return best.label;
+  }
+  async function hasAlpha(bmp: ImageBitmap, type: string) {
+    if (type !== 'image/png') return false;
+    const scale = Math.min(1, 512 / Math.max(bmp.width, bmp.height));
+    const c = new OffscreenCanvas(Math.max(1, Math.round(bmp.width * scale)), Math.max(1, Math.round(bmp.height * scale)));
+    const ctx = c.getContext('2d')!;
+    ctx.drawImage(bmp, 0, 0, c.width, c.height);
+    const d = ctx.getImageData(0, 0, c.width, c.height).data;
+    for (let i = 3; i < d.length; i += 4) if (d[i] < 255) return true;
+    return false;
+  }
+  async function add(files: FileList | File[]) {
+    for (const f of [...files].filter((f) => /image\/(png|jpeg)/.test(f.type))) {
+      const bmp = await createImageBitmap(f);
+      items.push({ file: f, url: URL.createObjectURL(f), w: bmp.width, h: bmp.height, alpha: await hasAlpha(bmp, f.type) });
+      bmp.close();
+    }
+    render();
+  }
+  function render() {
+    root.querySelector<HTMLElement>('[data-results]')!.hidden = !items.length;
+    rows.innerHTML = items
+      .map((it) => {
+        const m = match(it.w, it.h);
+        const checks = [
+          m ? `<li><span class="ok">${icon('check', 16)}</span> Accepted size</li>` : `<li><span class="bad">${icon('x', 16)}</span> Not an accepted size. Nearest: ${esc(nearest(it.w, it.h))}</li>`,
+          it.alpha ? `<li><span class="bad">${icon('x', 16)}</span> Has transparency: will be rejected</li>` : `<li><span class="ok">${icon('check', 16)}</span> No transparency</li>`,
+        ];
+        return `<tr><td><img class="thumb" src="${it.url}" alt=""></td><td title="${esc(it.file.name)}"><strong>${esc(it.file.name)}</strong></td><td class="num">${it.w} × ${it.h}</td><td>${m ? `<span class="tag ok">${esc(m)}</span>` : '<span class="tag warn">No match</span>'}</td><td style="white-space:normal"><ul class="checklist">${checks.join('')}</ul></td></tr>`;
+      })
+      .join('');
+  }
+  async function resizeAll() {
+    const [tw, th] = root.querySelector<HTMLSelectElement>('[data-target]')!.value.split('x').map(Number);
+    const mode = (root.querySelector<HTMLInputElement>('input[name=mode]:checked')!).value;
+    const bg = root.querySelector<HTMLInputElement>('[data-bg]')!.value;
+    const out: { name: string; blob: Blob }[] = [];
+    for (const it of items) {
+      const bmp = await createImageBitmap(it.file);
+      const c = document.createElement('canvas');
+      c.width = tw;
+      c.height = th;
+      const ctx = c.getContext('2d')!;
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, tw, th); // also removes transparency
+      const s = mode === 'fill' ? Math.max(tw / bmp.width, th / bmp.height) : Math.min(tw / bmp.width, th / bmp.height);
+      const w = bmp.width * s, h = bmp.height * s;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(bmp, (tw - w) / 2, (th - h) / 2, w, h);
+      bmp.close();
+      const blob = await canvasToRgbPng(c); // RGB, no alpha channel
+      out.push({ name: it.file.name.replace(/\.[^.]+$/, '') + `-${tw}x${th}.png`, blob });
+    }
+    if (out.length === 1) return save(out[0].blob, out[0].name);
+    const JSZip = (await import('jszip')).default;
+    const zip = new JSZip();
+    out.forEach((o) => zip.file(o.name, o.blob));
+    save(await zip.generateAsync({ type: 'blob' }), `screenshots-${tw}x${th}.zip`);
+  }
+  function save(blob: Blob, name: string) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }
+  root.querySelector('[data-pick]')!.addEventListener('click', (e) => { e.stopPropagation(); input.click(); });
+  drop.addEventListener('click', () => input.click());
+  drop.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); input.click(); } });
+  input.addEventListener('change', () => { if (input.files) void add(input.files); input.value = ''; });
+  drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('drag'); });
+  drop.addEventListener('dragleave', () => drop.classList.remove('drag'));
+  drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('drag'); if (e.dataTransfer?.files) void add(e.dataTransfer.files); });
+  root.querySelector('[data-resize]')!.addEventListener('click', () => void resizeAll());
+</script>

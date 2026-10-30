@@ -1,0 +1,48 @@
+<div class="calc" data-calc="rating">
+  <form>
+    <div class="row2">
+      <div class="field"><label for="r-avg">Current average rating</label><input class="input" id="r-avg" name="avg" type="number" min="1" max="5" step="0.01" value="4.2" /></div>
+      <div class="field"><label for="r-count">Number of ratings</label><input class="input" id="r-count" name="count" type="number" min="0" step="1" value="120" /></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label for="r-target">Target average</label><input class="input" id="r-target" name="target" type="number" min="1" max="5" step="0.05" value="4.5" /></div>
+      <div class="field">
+        <label for="r-stars">New ratings are</label>
+        <select class="select" id="r-stars" name="stars"><option value="5" selected>5 stars</option><option value="4.8">Mostly 5★ (avg 4.8)</option><option value="4.5">Mixed (avg 4.5)</option></select>
+      </div>
+    </div>
+    <div class="share-row">
+      <button type="button" class="btn btn-sm" data-action="copy-link">Copy link to this result</button>
+      <button type="button" class="btn btn-sm btn-ghost" data-action="reset">Reset</button>
+    </div>
+  </form>
+  <div class="out" data-out aria-live="polite"></div>
+</div>
+
+<script>
+  import { mountCalc, num } from '../../app/calc';
+  import { reviewsNeeded, ratingAfter } from '../../lib/appmath';
+
+  mountCalc(document.querySelector<HTMLElement>('[data-calc="rating"]')!, (v) => {
+    const avg = Math.min(5, Math.max(1, num(v.avg, 1)));
+    const count = Math.max(0, Math.round(num(v.count)));
+    const target = Math.min(5, Math.max(1, num(v.target, 1)));
+    const stars = num(v.stars, 5);
+    const need = reviewsNeeded(avg, count, target, stars);
+    const big = target <= avg
+      ? `<div class="v">Already there</div><div class="s">Your ${avg.toFixed(2)} average is at or above ${target}.</div>`
+      : Number.isFinite(need)
+        ? `<div class="v">${need.toLocaleString()} ratings</div><div class="s">at ${stars}★ to move from ${avg.toFixed(2)} to ${target}</div>`
+        : `<div class="v">Not reachable</div><div class="s">New ratings averaging ${stars}★ can never lift you to ${target}.</div>`;
+    const steps = [10, 25, 50, 100, 250].map((n) => `<tr><th>+${n} ratings at 5★</th><td>${ratingAfter(avg, count, n, 5).toFixed(2)}</td></tr>`).join('');
+    const oneStar = count ? avg - ratingAfter(avg, count, 1, 1) : 0;
+    const recover = count ? reviewsNeeded(ratingAfter(avg, count, 1, 1), count + 1, avg, 5) : 0;
+    return `<div class="big"><div class="k">Ratings needed</div>${big}</div>
+      <table class="kv">${steps}</table>
+      <table class="kv">
+        <tr><th>One new 1★ rating costs</th><td>−${oneStar.toFixed(3)}</td></tr>
+        <tr><th>5★ ratings to undo it</th><td>${recover.toLocaleString()}</td></tr>
+      </table>
+      <p class="note">Ratings are per country on the App Store, so use the numbers for one storefront. Only ask for ratings with <code>SKStoreReviewController</code> / <code>requestReview</code>; Apple limits the prompt to 3 times a year per user.</p>`;
+  });
+</script>

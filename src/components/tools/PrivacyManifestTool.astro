@@ -1,0 +1,133 @@
+---
+import Icon from '../Icon.astro';
+import { PRIVACY_API_TYPES, PRIVACY_DATA_TYPES, PRIVACY_PURPOSES, PRIVACY_SOURCE } from '../../data/appstore';
+const rid = (code: string) => code.replace('.', '_');
+---
+<div class="calc" data-calc="privacy">
+  <form>
+    <details class="group" open>
+      <summary>Required-reason APIs <span class="count">pick each reason that applies</span></summary>
+      <div style="padding:14px;display:grid;gap:14px">
+        {PRIVACY_API_TYPES.map((a) => (
+          <fieldset class="pm-set">
+            <legend><strong>{a.name}</strong> <span class="hint">{a.examples}</span></legend>
+            {a.reasons.map(([code, text]) => (
+              <label class="check"><input type="checkbox" name={`r_${a.id}_${rid(code)}`} value="1" checked={code === 'CA92.1'} /><span><b>{code}</b><small>{text}</small></span></label>
+            ))}
+          </fieldset>
+        ))}
+      </div>
+    </details>
+    <details class="group">
+      <summary>Data your app collects <span class="count" data-collected-count>none</span></summary>
+      <div style="padding:14px;display:grid;gap:14px">
+        <p class="note">Tick a data type only if it leaves the device (sent to you or a third party). Then choose whether it’s linked to the user’s identity, used for tracking, and why.</p>
+        {PRIVACY_DATA_TYPES.map((g) => (
+          <fieldset class="pm-set">
+            <legend><strong>{g.group}</strong></legend>
+            {g.types.map(([key, label]) => (
+              <div>
+                <label class="check"><input type="checkbox" name={`d_${key}`} value="1" /><span><b>{label}</b></span></label>
+                <div class="pm-sub" data-sub={key} hidden>
+                  <label class="check"><input type="checkbox" name={`l_${key}`} value="1" /><span><b>Linked to identity</b></span></label>
+                  <label class="check"><input type="checkbox" name={`t_${key}`} value="1" /><span><b>Used for tracking</b></span></label>
+                  {PRIVACY_PURPOSES.map(([p, pl]) => (
+                    <label class="check"><input type="checkbox" name={`p_${key}_${p}`} value="1" checked={p === 'AppFunctionality'} /><span><b>{pl}</b></span></label>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </fieldset>
+        ))}
+      </div>
+    </details>
+    <details class="group">
+      <summary>Tracking <span class="count">App Tracking Transparency</span></summary>
+      <div style="padding:14px;display:grid;gap:12px">
+        <label class="check"><input type="checkbox" name="trk" value="1" /><span><b>This app tracks users</b><small>Links data with third-party data for ads or shares it with data brokers, as defined by ATT.</small></span></label>
+        <div class="field"><label for="pm-dom">Tracking domains <span class="hint">one per line</span></label><textarea class="input" id="pm-dom" name="dom" rows="3" placeholder="ads.example.com"></textarea></div>
+      </div>
+    </details>
+    <div class="share-row">
+      <button type="button" class="btn btn-sm" data-action="copy-link">Copy link to these settings</button>
+      <button type="button" class="btn btn-sm btn-ghost" data-action="reset">Reset</button>
+    </div>
+    <p class="note">Reason codes from Apple’s <a href={PRIVACY_SOURCE} rel="noopener">privacy manifest documentation</a>.</p>
+  </form>
+  <div class="out" data-out aria-live="polite"></div>
+  <template data-icons><Icon name="download" size={18} /><Icon name="copy" size={18} /></template>
+</div>
+
+<style is:global>
+  .pm-set { border: 0; margin: 0; padding: 0; display: grid; gap: 2px; min-width: 0; }
+  .pm-set legend { padding: 0 0 6px; font-size: 0.95rem; }
+  .pm-set legend { overflow-wrap: anywhere; }
+  .pm-set legend .hint { font-size: 0.8rem; color: var(--text-3); font-weight: 450; font-family: var(--mono); }
+  .pm-sub { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 0; margin: 0 0 8px 28px; padding: 6px; border-radius: 8px; background: var(--surface-2); }
+  .pm-sub[hidden] { display: none; }
+  .pm-sub .check { padding: 4px 6px; }
+  .pm-code { min-width: 0; max-width: 100%; max-height: 520px; overflow: auto; margin: 0; padding: 12px 14px; border-radius: var(--radius); background: var(--surface-2); font-size: 0.78rem; line-height: 1.5; tab-size: 2; }
+</style>
+
+<script>
+  import { mountCalc, esc, flash } from '../../app/calc';
+  import { PRIVACY_API_TYPES, PRIVACY_DATA_TYPES, PRIVACY_PURPOSES } from '../../data/appstore';
+  import { buildPrivacyManifest } from '../../lib/privacy';
+
+  const root = document.querySelector<HTMLElement>('[data-calc="privacy"]')!;
+  const [dlIcon, copyIcon] = [...root.querySelector('template')!.content.children].map((el) => el.outerHTML);
+  const allTypes = PRIVACY_DATA_TYPES.flatMap((g) => g.types);
+  let latest = '';
+
+  mountCalc(
+    root,
+    (v) => {
+      const apis = PRIVACY_API_TYPES.map((a) => ({ key: a.key, reasons: a.reasons.map(([c]) => c).filter((c) => v[`r_${a.id}_${c.replace('.', '_')}`]) })).filter((a) => a.reasons.length);
+      const collected = allTypes.filter(([k]) => v[`d_${k}`]).map(([k]) => ({
+        type: k, linked: !!v[`l_${k}`], tracking: !!v[`t_${k}`], purposes: PRIVACY_PURPOSES.map(([p]) => p).filter((p) => v[`p_${k}_${p}`]),
+      }));
+      const tracking = !!v.trk;
+      const domains = (v.dom ?? '').split(/[\s,]+/).map((d) => d.trim()).filter(Boolean);
+      latest = buildPrivacyManifest({ tracking, domains, collected, apis });
+
+      const warnings: string[] = [];
+      for (const c of collected) if (!c.purposes.length) warnings.push(`${esc(allTypes.find(([k]) => k === c.type)![1])}: choose at least one purpose.`);
+      if (collected.some((c) => c.tracking) && !tracking) warnings.push('A data type is used for tracking, but “This app tracks users” is off.');
+      if (tracking && !domains.length) warnings.push('Tracking is on but no tracking domains are listed. Add the domains your SDKs contact for tracking.');
+      if (!tracking && domains.length) warnings.push('Tracking domains are only used when tracking is on.');
+
+      return `<div class="big"><div class="k">PrivacyInfo.xcprivacy</div><div class="v">${apis.length} API ${apis.length === 1 ? 'type' : 'types'}</div>
+          <div class="s">${collected.length} collected data ${collected.length === 1 ? 'type' : 'types'} · tracking ${tracking ? 'on' : 'off'}</div></div>
+        ${warnings.length ? `<div class="alert alert-warn"><div><h3>Check before shipping</h3>${warnings.map((w) => `<p>${w}</p>`).join('')}</div></div>` : ''}
+        <div class="share-row">
+          <button type="button" class="btn btn-primary btn-sm" data-pm="download">${dlIcon} Download file</button>
+          <button type="button" class="btn btn-sm" data-pm="copy">${copyIcon} Copy XML</button>
+        </div>
+        <pre class="pm-code"><code>${esc(latest)}</code></pre>
+        <p class="note">Add the file to your app target in Xcode (File › New › File › App Privacy). Each third-party SDK ships its own manifest.</p>`;
+    },
+    (v) => {
+      let n = 0;
+      for (const [k] of allTypes) {
+        const on = !!v[`d_${k}`];
+        if (on) n++;
+        root.querySelector<HTMLElement>(`[data-sub="${k}"]`)!.hidden = !on;
+      }
+      root.querySelector('[data-collected-count]')!.textContent = n ? `${n} selected` : 'none';
+    },
+  );
+
+  root.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>('[data-pm]');
+    if (!b) return;
+    if (b.dataset.pm === 'copy') {
+      void navigator.clipboard?.writeText(latest).then(() => flash(b, 'Copied'));
+    } else {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([latest], { type: 'application/xml' }));
+      a.download = 'PrivacyInfo.xcprivacy';
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+  });
+</script>

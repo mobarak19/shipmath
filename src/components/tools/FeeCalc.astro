@@ -1,0 +1,91 @@
+---
+import { STOREFRONTS, COMMISSION, WEB_CHECKOUT_DEFAULT, RULES_REVIEWED } from '../../data/appstore';
+---
+<div class="calc" data-calc="fee">
+  <form>
+    <div class="row2">
+      <div class="field">
+        <label for="price">Customer price</label>
+        <input class="input" id="price" name="price" type="number" inputmode="decimal" min="0" step="0.01" value="9.99" />
+      </div>
+      <div class="field">
+        <label for="sf">Storefront</label>
+        <select class="select" id="sf" name="sf">
+          {STOREFRONTS.map((s) => <option value={s.code} selected={s.code === 'US'}>{s.name} ({s.currency}{s.vat ? `, VAT ${s.vat}%` : ', tax added'})</option>)}
+        </select>
+      </div>
+    </div>
+    <div class="field">
+      <span class="label">Apple commission</span>
+      <div class="seg" role="radiogroup" aria-label="Apple commission">
+        <label><input type="radio" name="rate" value={String(COMMISSION.apple.reduced)} checked /><span>{COMMISSION.apple.reduced}% (Small Business / subs after year 1)</span></label>
+        <label><input type="radio" name="rate" value={String(COMMISSION.apple.standard)} /><span>{COMMISSION.apple.standard}% standard</span></label>
+      </div>
+    </div>
+    <details class="group">
+      <summary>Compare with web checkout <span class="count">optional</span></summary>
+      <div style="padding:14px;display:grid;gap:12px">
+        <div class="row3">
+          <div class="field"><label for="fp">Card fee %</label><input class="input" id="fp" name="fp" type="number" step="0.1" min="0" value={WEB_CHECKOUT_DEFAULT.percent} /></div>
+          <div class="field"><label for="ff">Fixed fee</label><input class="input" id="ff" name="ff" type="number" step="0.01" min="0" value={WEB_CHECKOUT_DEFAULT.fixed} /></div>
+          <div class="field"><label for="pf">Platform fee % <span class="hint">if any</span></label><input class="input" id="pf" name="pf" type="number" step="0.1" min="0" value="0" /></div>
+        </div>
+        <div class="field">
+          <label for="conv">Web conversion vs in-app <span class="hint">100% = same conversion</span></label>
+          <input class="input" id="conv" name="conv" type="number" min="1" max="200" step="1" value="80" />
+        </div>
+        <p class="note">Example card-processing fee. Use your own provider’s rates. If you use a merchant of record (Paddle, Lemon Squeezy…), enter their total fee.</p>
+      </div>
+    </details>
+    <div class="share-row">
+      <button type="button" class="btn btn-sm" data-action="copy-link">Copy link to this result</button>
+      <button type="button" class="btn btn-sm btn-ghost" data-action="reset">Reset</button>
+    </div>
+    <p class="note">Commission rules reviewed {RULES_REVIEWED}. VAT rates are standard rates; see sources below.</p>
+  </form>
+  <div class="out" data-out aria-live="polite"></div>
+</div>
+
+<script>
+  import { mountCalc, num, esc } from '../../app/calc';
+  import { storeProceeds, webProceeds } from '../../lib/appmath';
+  import { STOREFRONTS, COMMISSION } from '../../data/appstore';
+
+  const root = document.querySelector<HTMLElement>('[data-calc="fee"]')!;
+  mountCalc(root, (v) => {
+    const sf = STOREFRONTS.find((s) => s.code === v.sf) ?? STOREFRONTS[0];
+    const fmt = new Intl.NumberFormat(undefined, { style: 'currency', currency: sf.currency, maximumFractionDigits: sf.currency === 'JPY' || sf.currency === 'KRW' ? 0 : 2 });
+    const price = Math.max(0, num(v.price));
+    const rate = num(v.rate, 15);
+    const apple = storeProceeds(price, sf.vat, rate);
+    const google = storeProceeds(price, sf.vat, rate === COMMISSION.apple.reduced ? COMMISSION.google.reduced : COMMISSION.google.standard);
+    const web = webProceeds(price, sf.vat, num(v.fp), num(v.ff), num(v.pf));
+    const conv = num(v.conv, 100) / 100;
+    const webPerVisitor = web.proceeds * conv;
+    const pct = (x: number) => (price ? (x / price) * 100 : 0);
+    const better = webPerVisitor > apple.proceeds;
+    return `
+      <div class="big"><div class="k">You receive per sale</div><div class="v">${fmt.format(apple.proceeds)}</div>
+        <div class="s">${(100 - apple.effectiveRate * 100).toFixed(1)}% of the ${fmt.format(price)} price · ${esc(sf.name)}</div>
+        <div class="bar-split" aria-hidden="true"><i class="c4" style="width:${pct(apple.proceeds)}%"></i><i class="c1" style="width:${pct(apple.commission)}%"></i><i class="c2" style="width:${pct(apple.tax)}%"></i></div>
+        <div class="legend"><span><b class="c4"></b>You ${fmt.format(apple.proceeds)}</span><span><b class="c1"></b>Apple ${fmt.format(apple.commission)}</span><span><b class="c2"></b>${sf.vat ? 'VAT' : 'Tax'} ${fmt.format(apple.tax)}</span></div>
+      </div>
+      <table class="kv">
+        <tr><th>Price (incl. VAT)</th><td>${fmt.format(price)}</td></tr>
+        <tr><th>VAT / GST removed (${sf.vat}%)</th><td>−${fmt.format(apple.tax)}</td></tr>
+        <tr><th>Net price</th><td>${fmt.format(apple.net)}</td></tr>
+        <tr><th>Apple commission (${rate}%)</th><td>−${fmt.format(apple.commission)}</td></tr>
+        <tr><th><strong>Your proceeds</strong></th><td><strong>${fmt.format(apple.proceeds)}</strong></td></tr>
+      </table>
+      <table class="kv">
+        <tr><th>App Store</th><td>${fmt.format(apple.proceeds)}</td></tr>
+        <tr><th>Google Play (${rate === COMMISSION.apple.reduced ? COMMISSION.google.reduced : COMMISSION.google.standard}%)</th><td>${fmt.format(google.proceeds)}</td></tr>
+        <tr><th>Web checkout (per sale)</th><td>${fmt.format(web.proceeds)}</td></tr>
+        <tr><th>Web, adjusted for ${Math.round(conv * 100)}% conversion</th><td>${fmt.format(webPerVisitor)}</td></tr>
+      </table>
+      <p class="note">${better
+        ? `At ${Math.round(conv * 100)}% relative conversion, web checkout earns <strong>${fmt.format(webPerVisitor - apple.proceeds)}</strong> more per would-be in-app buyer.`
+        : `At ${Math.round(conv * 100)}% relative conversion, in-app purchase earns more. Web would need ≥ ${Math.ceil((apple.proceeds / Math.max(web.proceeds, 0.0001)) * 100)}% of in-app conversion to break even.`}</p>
+      <table class="kv"><tr><th>Per 1,000 sales (App Store)</th><td>${fmt.format(apple.proceeds * 1000)}</td></tr><tr><th>Apple keeps per 1,000</th><td>${fmt.format(apple.commission * 1000)}</td></tr></table>`;
+  });
+</script>

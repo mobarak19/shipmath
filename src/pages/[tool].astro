@@ -1,0 +1,44 @@
+---
+import ToolPage from '../components/ToolPage.astro';
+import { TOOLS } from '../data/tools';
+import FeeCalc from '../components/tools/FeeCalc.astro';
+import RevenueCalc from '../components/tools/RevenueCalc.astro';
+import MrrCalc from '../components/tools/MrrCalc.astro';
+import LtvCalc from '../components/tools/LtvCalc.astro';
+import ChurnCalc from '../components/tools/ChurnCalc.astro';
+import ScreenshotTool from '../components/tools/ScreenshotTool.astro';
+import IconTool from '../components/tools/IconTool.astro';
+import AsoTool from '../components/tools/AsoTool.astro';
+import WebCheckoutCalc from '../components/tools/WebCheckoutCalc.astro';
+import EuTermsCalc from '../components/tools/EuTermsCalc.astro';
+import PlayFeeCalc from '../components/tools/PlayFeeCalc.astro';
+import PrivacyManifestTool from '../components/tools/PrivacyManifestTool.astro';
+import RatingCalc from '../components/tools/RatingCalc.astro';
+import PaywallCalc from '../components/tools/PaywallCalc.astro';
+import AdRevenueCalc from '../components/tools/AdRevenueCalc.astro';
+import RoasCalc from '../components/tools/RoasCalc.astro';
+
+export function getStaticPaths() {
+  return TOOLS.map((tool) => ({ params: { tool: tool.slug }, props: { tool } }));
+}
+const { tool } = Astro.props;
+const s = tool.slug;
+---
+<ToolPage tool={tool}>
+  {s === 'app-store-fee-calculator' && <FeeCalc />}
+  {s === 'app-revenue-calculator' && <RevenueCalc />}
+  {s === 'subscription-mrr-calculator' && <MrrCalc />}
+  {s === 'app-ltv-calculator' && <LtvCalc />}
+  {s === 'app-churn-calculator' && <ChurnCalc />}
+  {s === 'app-store-screenshot-sizes' && <ScreenshotTool />}
+  {s === 'app-icon-generator' && <IconTool />}
+  {s === 'aso-keyword-character-counter' && <AsoTool />}
+  {s === 'web-checkout-vs-in-app-purchase-calculator' && <WebCheckoutCalc />}
+  {s === 'eu-alternative-terms-calculator' && <EuTermsCalc />}
+  {s === 'google-play-fee-calculator' && <PlayFeeCalc />}
+  {s === 'privacy-manifest-generator' && <PrivacyManifestTool />}
+  {s === 'app-rating-calculator' && <RatingCalc />}
+  {s === 'paywall-trial-calculator' && <PaywallCalc />}
+  {s === 'admob-revenue-calculator' && <AdRevenueCalc />}
+  {s === 'app-roas-calculator' && <RoasCalc />}
+</ToolPage>

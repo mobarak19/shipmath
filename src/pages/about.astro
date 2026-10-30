@@ -1,0 +1,30 @@
+---
+import Base from '../layouts/Base.astro';
+import { SITE } from '../data/site';
+import { donation } from '../lib/offers';
+const support = donation();
+import { u } from '../lib/url';
+---
+<Base title={`About ${SITE.name}`} description={`${SITE.name} is a free set of App Store calculators built by ${SITE.author}.`}>
+  <div class="container" style="padding-top:32px">
+    <nav class="breadcrumbs" aria-label="Breadcrumb"><a href={u('/')}>Home</a> / <span aria-current="page">About</span></nav>
+    <article class="prose">
+      <h1>About {SITE.name}</h1>
+      <p>{SITE.name} is a set of free calculators and tools for <strong>iOS developers</strong>: App Store economics, subscription metrics and submission assets.</p>
+      <p>It’s built by <strong>{SITE.author}</strong>, an {SITE.authorBio.charAt(0).toLowerCase() + SITE.authorBio.slice(1)} These are the calculations I kept doing in spreadsheets, done properly (VAT included) and shared.</p>
+      <h2>Principles</h2>
+      <ul>
+        <li><strong>Accurate on the details</strong>: VAT before commission, App Store vs Google Play vs web checkout.</li>
+        <li><strong>Transparent</strong>: every page shows formulas, sources and when data was last updated.</li>
+        <li><strong>Private</strong>: calculations and file tools run in your browser.</li>
+      </ul>
+      <h2>Support this project</h2>
+      <p>{SITE.name} is free and has no ad scripts. It’s funded by a few clearly labelled <a href={u('/disclosure/')}>affiliate recommendations</a> and by our iPhone apps.{support && ' If it saved you time, you can also support it directly:'}</p>
+      {support && (
+        <p><a class:list={['btn btn-primary', { placeholder: !support.ready }]} href={support.ready ? support.url : '#'} target="_blank" rel="noopener">{support.label}</a></p>
+      )}
+      <h2>Contact</h2>
+      <p>Feedback, bug reports and feature requests are welcome. Add your contact email or form here before launch.</p>
+    </article>
+  </div>
+</Base>

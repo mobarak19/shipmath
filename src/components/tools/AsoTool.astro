@@ -1,0 +1,79 @@
+---
+import { ASO_LIMITS } from '../../data/appstore';
+const defaults: Record<string, string> = {
+  name: 'Snapfix: Photo Editor',
+  subtitle: 'Enhance & retouch photos',
+  keywords: 'photo, editor, filters,retouch,enhance,blur,background,collage,editing,pics,selfie,beauty',
+  promo: '',
+  description: '',
+};
+---
+<div class="calc" data-tool="aso">
+  <form>
+    {ASO_LIMITS.map((f) => (
+      <div class="field">
+        <label for={`aso-${f.id}`}>{f.label} <span class="hint" data-count={f.id}></span></label>
+        {f.id === 'description' || f.id === 'promo'
+          ? <textarea class="input" id={`aso-${f.id}`} name={f.id} rows={f.id === 'promo' ? 3 : 5}>{defaults[f.id]}</textarea>
+          : <input class="input" id={`aso-${f.id}`} name={f.id} value={defaults[f.id]} autocomplete="off" />}
+        <div class="meter" data-meter={f.id}><i></i></div>
+        <span class="hint">{f.hint}</span>
+      </div>
+    ))}
+  </form>
+  <div class="out" data-out aria-live="polite"></div>
+</div>
+<script>
+  import { ASO_LIMITS } from '../../data/appstore';
+  import { esc } from '../../app/calc';
+  import { icon } from '../../lib/icons';
+  const root = document.querySelector<HTMLElement>('[data-tool="aso"]')!;
+  const form = root.querySelector('form')!;
+  const out = root.querySelector<HTMLElement>('[data-out]')!;
+  const bytes = (s: string) => new TextEncoder().encode(s).length;
+  const words = (s: string) => s.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean);
+  const singular = (w: string) => (w.length > 3 && w.endsWith('s') && !w.endsWith('ss') ? w.slice(0, -1) : w);
+
+  function run() {
+    const v = Object.fromEntries(new FormData(form)) as Record<string, string>;
+    for (const f of ASO_LIMITS) {
+      const val = v[f.id] ?? '';
+      const n = f.unit === 'bytes' ? bytes(val) : [...val].length;
+      const ratio = n / f.limit;
+      root.querySelector<HTMLElement>(`[data-count="${f.id}"]`)!.textContent = `${n} / ${f.limit} ${f.unit}`;
+      const m = root.querySelector<HTMLElement>(`[data-meter="${f.id}"]`)!;
+      m.className = `meter ${ratio > 1 ? 'over' : ratio > 0.9 ? 'warn' : ''}`;
+      (m.firstElementChild as HTMLElement).style.width = `${Math.min(100, ratio * 100)}%`;
+    }
+    const indexed = new Set([...words(v.name ?? ''), ...words(v.subtitle ?? '')].map(singular));
+    const raw = (v.keywords ?? '').split(',');
+    const seen = new Set<string>();
+    const issues: string[] = [];
+    const kept: string[] = [];
+    let spaceWaste = 0;
+    for (const r of raw) {
+      const t = r.trim().toLowerCase();
+      spaceWaste += bytes(r) - bytes(r.trim());
+      if (!t) continue;
+      const key = singular(t);
+      if (indexed.has(key)) { issues.push(`“${t}” is already in your name or subtitle`); continue; }
+      if (seen.has(key)) { issues.push(`“${t}” is a duplicate${key !== t ? ' (plural)' : ''}`); continue; }
+      seen.add(key);
+      kept.push(t);
+    }
+    if (spaceWaste) issues.unshift(`${spaceWaste} byte${spaceWaste > 1 ? 's' : ''} wasted on spaces around commas`);
+    const optimized = kept.join(',');
+    const used = bytes(v.keywords ?? '');
+    const freed = used - bytes(optimized);
+    out.innerHTML = `<div class="big"><div class="k">Keyword field</div><div class="v">${bytes(optimized)}<span style="font-size:.5em;color:var(--text-3)"> / 100 bytes</span></div><div class="s">${freed > 0 ? `Optimised: ${freed} bytes freed for new keywords` : 'No wasted space found'}</div></div>
+      ${issues.length ? `<ul class="checklist">${issues.map((i) => `<li><span class="warn">${icon('alert', 16)}</span>${esc(i)}</li>`).join('')}</ul>` : `<ul class="checklist"><li><span class="ok">${icon('check', 16)}</span>No duplicates or wasted space</li></ul>`}
+      <div class="field"><span class="label">Optimised keyword field</span><textarea class="input" readonly rows="3" data-optimized>${esc(optimized)}</textarea>
+      <button type="button" class="btn btn-sm" data-copy-opt>${icon('copy', 16)} Copy</button></div>
+      <p class="note">Words from the name and subtitle are already indexed, so they’re removed from the keyword field. Apple can combine words across all three fields into search phrases.</p>`;
+  }
+  form.addEventListener('input', run);
+  out.addEventListener('click', (e) => {
+    if ((e.target as HTMLElement).closest('[data-copy-opt]')) void navigator.clipboard?.writeText(out.querySelector<HTMLTextAreaElement>('[data-optimized]')!.value);
+  });
+  run();
+</script>

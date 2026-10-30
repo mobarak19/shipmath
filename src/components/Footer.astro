@@ -1,0 +1,44 @@
+---
+import Icon from './Icon.astro';
+import { SITE } from '../data/site';
+import { toolsIn } from '../data/tools';
+import { donation } from '../lib/offers';
+import { u } from '../lib/url';
+const support = donation();
+const year = new Date().getFullYear();
+---
+<footer class="site-footer">
+  <div class="container">
+    <div class="footer-grid">
+      <div>
+        <a class="logo" href={u('/')}><span class="logo-mark"><Icon name="calculator" size={20} /></span>{SITE.name}</a>
+        <p style="margin-top:12px;max-width:320px">Free App Store calculators and tools for iOS developers. Everything runs in your browser.</p>
+        <p class="small">Adding AI to your app? <a href={SITE.sister.url} target="_blank" rel="noopener">{SITE.sister.name}: {SITE.sister.text}</a></p>
+        {support && (
+          <a class:list={['btn btn-sm support-btn', { placeholder: !support.ready }]} href={support.ready ? support.url : '#'} target="_blank" rel="noopener">
+            <Icon name="zap" size={16} /> {support.label}
+          </a>
+        )}
+      </div>
+      <div>
+        <h3>App Store</h3>
+        <ul>{toolsIn('ios').map((t) => <li><a href={u(`/${t.slug}/`)}>{t.name}</a></li>)}</ul>
+      </div>
+      <div>
+        <h3>Learn</h3>
+        <ul>
+          <li><a href={u('/guides/app-store-fees-explained/')}>App Store fees explained</a></li>
+          <li><a href={u('/guides/web-checkout-vs-in-app-purchase/')}>Web checkout vs in-app purchase</a></li>
+          <li><a href={u('/about/')}>About</a></li>
+          <li><a href={u('/privacy/')}>Privacy</a></li>
+          <li><a href={u('/disclosure/')}>Affiliate disclosure</a></li>
+          <li><a href={u('/terms/')}>Terms</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© {year} {SITE.name}. Not affiliated with Apple or Google.</span>
+      <span>Made by {SITE.author}</span>
+    </div>
+  </div>
+</footer>

@@ -1,0 +1,74 @@
+---
+import { COMMISSION, WEB_CHECKOUT_DEFAULT, RULES_REVIEWED } from '../../data/appstore';
+---
+<div class="calc" data-calc="web">
+  <form>
+    <div class="row2">
+      <div class="field"><label for="w-buyers">In-app purchases per month</label><input class="input" id="w-buyers" name="buyers" type="number" min="0" step="1" value="1000" /></div>
+      <div class="field"><label for="w-price">Price</label><input class="input" id="w-price" name="price" type="number" inputmode="decimal" min="0" step="0.01" value="9.99" /></div>
+    </div>
+    <div class="field">
+      <span class="label">Apple commission today</span>
+      <div class="seg" role="radiogroup" aria-label="Apple commission">
+        <label><input type="radio" name="rate" value={String(COMMISSION.apple.reduced)} checked /><span>{COMMISSION.apple.reduced}% (Small Business / subs after year 1)</span></label>
+        <label><input type="radio" name="rate" value={String(COMMISSION.apple.standard)} /><span>{COMMISSION.apple.standard}% standard</span></label>
+      </div>
+    </div>
+    <div class="row2">
+      <div class="field"><label for="w-share">Buyers who choose web <span class="hint">% of purchases</span></label><input class="input" id="w-share" name="share" type="number" min="0" max="100" step="1" value="40" /></div>
+      <div class="field"><label for="w-conv">Web conversion vs in-app <span class="hint">100% = same</span></label><input class="input" id="w-conv" name="conv" type="number" min="1" max="200" step="1" value="75" /></div>
+    </div>
+    <div class="row3">
+      <div class="field"><label for="w-fp">Card fee %</label><input class="input" id="w-fp" name="fp" type="number" step="0.1" min="0" value={WEB_CHECKOUT_DEFAULT.percent} /></div>
+      <div class="field"><label for="w-ff">Fixed fee</label><input class="input" id="w-ff" name="ff" type="number" step="0.01" min="0" value={WEB_CHECKOUT_DEFAULT.fixed} /></div>
+      <div class="field"><label for="w-af">Apple fee on web % <span class="hint">if any</span></label><input class="input" id="w-af" name="af" type="number" step="0.5" min="0" max="30" value="0" /></div>
+    </div>
+    <div class="field"><label for="w-vat">Sales tax / VAT included in price %</label><input class="input" id="w-vat" name="vat" type="number" min="0" max="30" step="0.5" value="0" /></div>
+    <div class="share-row">
+      <button type="button" class="btn btn-sm" data-action="copy-link">Copy link to this result</button>
+      <button type="button" class="btn btn-sm btn-ghost" data-action="reset">Reset</button>
+    </div>
+    <p class="note">US prices are shown before sales tax, so VAT is 0 by default. Using a merchant of record (Paddle, Lemon Squeezy…)? Enter its total fee as the card fee. Rules reviewed {RULES_REVIEWED}.</p>
+  </form>
+  <div class="out" data-out aria-live="polite"></div>
+</div>
+
+<script>
+  import { mountCalc, num } from '../../app/calc';
+  import { storeProceeds, webProceeds } from '../../lib/appmath';
+
+  const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+  mountCalc(document.querySelector<HTMLElement>('[data-calc="web"]')!, (v) => {
+    const buyers = Math.max(0, num(v.buyers));
+    const price = Math.max(0, num(v.price));
+    const vat = num(v.vat);
+    const share = Math.min(100, Math.max(0, num(v.share))) / 100;
+    const conv = num(v.conv, 100) / 100;
+    const iap = storeProceeds(price, vat, num(v.rate, 15));
+    const web = webProceeds(price, vat, num(v.fp), num(v.ff), num(v.af));
+    const iapOnly = buyers * iap.proceeds;
+    const iapPart = buyers * (1 - share) * iap.proceeds;
+    const webBuyers = buyers * share * conv;
+    const webPart = webBuyers * web.proceeds;
+    const mixed = iapPart + webPart;
+    const diff = mixed - iapOnly;
+    const breakEven = web.proceeds > 0 ? (iap.proceeds / web.proceeds) * 100 : Infinity;
+    const sign = diff >= 0 ? '+' : '−';
+    return `<div class="big"><div class="k">Change per month with web checkout</div><div class="v">${sign}${usd.format(Math.abs(diff))}</div>
+        <div class="s">${sign}${usd.format(Math.abs(diff * 12))} per year · ${iapOnly ? `${sign}${Math.abs((diff / iapOnly) * 100).toFixed(1)}%` : '0%'} vs in-app only</div></div>
+      <table class="kv">
+        <tr><th>You keep per in-app sale</th><td>${usd.format(iap.proceeds)}</td></tr>
+        <tr><th>You keep per web sale</th><td>${usd.format(web.proceeds)}</td></tr>
+        <tr><th>Break-even web conversion</th><td>${Number.isFinite(breakEven) ? `${breakEven.toFixed(1)}%` : 'never'}</td></tr>
+      </table>
+      <table class="kv">
+        <tr><th>In-app only, per month</th><td>${usd.format(iapOnly)}</td></tr>
+        <tr><th>In-app (${Math.round((1 - share) * 100)}% of buyers)</th><td>${usd.format(iapPart)}</td></tr>
+        <tr><th>Web (${Math.round(webBuyers).toLocaleString()} completed purchases)</th><td>${usd.format(webPart)}</td></tr>
+        <tr><th><strong>Mixed total, per month</strong></th><td><strong>${usd.format(mixed)}</strong></td></tr>
+      </table>
+      <p class="note">${diff >= 0
+        ? `Web checkout pays off as long as at least <strong>${breakEven.toFixed(0)}%</strong> of buyers who leave the app finish paying on the web.`
+        : `Web checkout loses money here: fewer than <strong>${Number.isFinite(breakEven) ? breakEven.toFixed(0) : '∞'}%</strong> of buyers who leave the app would need to finish paying for it to break even.`}</p>`;
+  });
+</script>

@@ -1,0 +1,77 @@
+---
+import { EU_ALT_TERMS, EU_TERMS_REVIEWED, COMMISSION } from '../../data/appstore';
+const t = EU_ALT_TERMS;
+---
+<div class="calc" data-calc="eu">
+  <form>
+    <div class="row2">
+      <div class="field"><label for="eu-sales">EU sales per month <span class="hint">customer prices, € incl. VAT</span></label><input class="input" id="eu-sales" name="sales" type="number" min="0" step="100" value="20000" /></div>
+      <div class="field"><label for="eu-vat">Average VAT %</label><input class="input" id="eu-vat" name="vat" type="number" min="0" max="30" step="0.5" value="21" /></div>
+    </div>
+    <div class="field"><label for="eu-new">Sales to new users <span class="hint">% in their first 6 months</span></label><input class="input" id="eu-new" name="newp" type="number" min="0" max="100" step="1" value="40" /></div>
+    <div class="field">
+      <span class="label">Store services tier</span>
+      <div class="seg" role="radiogroup" aria-label="Store services tier">
+        <label><input type="radio" name="tier" value="2" checked /><span>Tier 2 (full App Store services)</span></label>
+        <label><input type="radio" name="tier" value="1" /><span>Tier 1 (basic)</span></label>
+      </div>
+    </div>
+    <label class="check"><input type="checkbox" name="red" value="1" checked /><span><b>Small Business Program or subscriptions after year 1</b><small>Standard commission {COMMISSION.apple.reduced}% instead of {COMMISSION.apple.standard}%; reduced Tier 2 rate.</small></span></label>
+    <details class="group">
+      <summary>Edit fee rates <span class="count">{EU_TERMS_REVIEWED}</span></summary>
+      <div style="padding:14px;display:grid;gap:12px">
+        <div class="row3">
+          <div class="field"><label for="eu-iaf">Acquisition fee %</label><input class="input" id="eu-iaf" name="iaf" type="number" min="0" step="0.5" value={t.acquisition} /></div>
+          <div class="field"><label for="eu-ctc">Core Tech. Commission %</label><input class="input" id="eu-ctc" name="ctc" type="number" min="0" step="0.5" value={t.ctc} /></div>
+          <div class="field"><label for="eu-t1">Tier 1 %</label><input class="input" id="eu-t1" name="t1" type="number" min="0" step="0.5" value={t.storeServices.tier1} /></div>
+        </div>
+        <div class="row2">
+          <div class="field"><label for="eu-t2">Tier 2 %</label><input class="input" id="eu-t2" name="t2" type="number" min="0" step="0.5" value={t.storeServices.tier2} /></div>
+          <div class="field"><label for="eu-t2r">Tier 2 reduced %</label><input class="input" id="eu-t2r" name="t2r" type="number" min="0" step="0.5" value={t.storeServices.tier2Reduced} /></div>
+        </div>
+        <p class="note">Rates from Apple’s <a href={t.source} rel="noopener">EU terms page</a> as of the {EU_TERMS_REVIEWED}. Apple has changed these terms several times; check before deciding.</p>
+      </div>
+    </details>
+    <div class="share-row">
+      <button type="button" class="btn btn-sm" data-action="copy-link">Copy link to this result</button>
+      <button type="button" class="btn btn-sm btn-ghost" data-action="reset">Reset</button>
+    </div>
+  </form>
+  <div class="out" data-out aria-live="polite"></div>
+</div>
+
+<script>
+  import { mountCalc, num } from '../../app/calc';
+  import { COMMISSION } from '../../data/appstore';
+
+  const eur = new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR' });
+  mountCalc(document.querySelector<HTMLElement>('[data-calc="eu"]')!, (v) => {
+    const sales = Math.max(0, num(v.sales));
+    const net = sales / (1 + num(v.vat) / 100);
+    const reduced = !!v.red;
+    const newShare = Math.min(100, Math.max(0, num(v.newp))) / 100;
+    const stdRate = reduced ? COMMISSION.apple.reduced : COMMISSION.apple.standard;
+    const ssf = v.tier === '1' ? num(v.t1) : reduced ? num(v.t2r) : num(v.t2);
+    const iaf = num(v.iaf) * newShare;
+    const altRate = iaf + ssf + num(v.ctc);
+    const std = net * (1 - stdRate / 100);
+    const alt = net * (1 - altRate / 100);
+    const diff = alt - std;
+    const sign = diff >= 0 ? '+' : '−';
+    return `<div class="big"><div class="k">Alternative terms vs standard</div><div class="v">${sign}${eur.format(Math.abs(diff))}</div>
+        <div class="s">per month · ${sign}${eur.format(Math.abs(diff * 12))} per year</div>
+        <div class="bar-split" aria-hidden="true"><i class="c4" style="width:${net ? (alt / sales) * 100 : 0}%"></i><i class="c1" style="width:${net ? ((net - alt) / sales) * 100 : 0}%"></i><i class="c2" style="width:${sales ? ((sales - net) / sales) * 100 : 0}%"></i></div>
+        <div class="legend"><span><b class="c4"></b>You (alternative)</span><span><b class="c1"></b>Apple fees</span><span><b class="c2"></b>VAT</span></div></div>
+      <table class="kv">
+        <tr><th>Net sales (VAT removed)</th><td>${eur.format(net)}</td></tr>
+        <tr><th>Standard terms (${stdRate}%)</th><td>${eur.format(std)}</td></tr>
+        <tr><th>Alternative terms (${altRate.toFixed(1)}% effective)</th><td>${eur.format(alt)}</td></tr>
+      </table>
+      <table class="kv">
+        <tr><th>Initial acquisition fee (${num(v.iaf)}% × ${Math.round(newShare * 100)}% of sales)</th><td>−${eur.format(net * (iaf / 100))}</td></tr>
+        <tr><th>Store services fee (${ssf}%)</th><td>−${eur.format(net * (ssf / 100))}</td></tr>
+        <tr><th>Core Technology Commission (${num(v.ctc)}%)</th><td>−${eur.format(net * (num(v.ctc) / 100))}</td></tr>
+      </table>
+      <p class="note">Fees are applied to the price excluding VAT, the same way as standard commission. This is a scenario estimate, not a quote of Apple’s contract.</p>`;
+  });
+</script>
