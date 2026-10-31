@@ -1,6 +1,6 @@
 # ShipMath: App Store calculators for iOS developers
 
-Calculators and tools for iOS developers. Static site (Astro), free to host on GitHub Pages. **AI cost tools moved to the sister site TokenMeter** (`~/Desktop/sites/Top_4_Ideas/02_AI_ML_Developer_Utilities/website`), so the two sites don't compete for the same searches.
+Calculators and tools for iOS developers. Static site (Astro), hosted on Cloudflare Pages. **AI cost tools moved to the sister site TokenMeter** (`~/Desktop/sites/Top_4_Ideas/02_AI_ML_Developer_Utilities/website`), so the two sites don't compete for the same searches.
 
 ## Pages (26)
 
@@ -21,20 +21,19 @@ npm run dev            # http://localhost:4321
 npm run build && npm run preview
 ```
 
-## Deploy to GitHub Pages
+## Deploy to Cloudflare Pages
 
-```bash
-cd website
-git init -b main && git add . && git commit -m "Initial site"
-git remote add origin https://github.com/<you>/<repo>.git
-git push -u origin main
-```
+Cloudflare Pages builds and deploys on every push to `main` (Workers & Pages → Create → Pages → Import an existing Git repository):
 
-On GitHub, go to **Settings → Pages → Source: GitHub Actions**. Base path and URL are detected automatically (project site, user site or custom domain). Use `u('/path/')` for internal links.
+- Framework preset: Astro · Build command: `npm run build` · Output directory: `dist`
+- Environment variables: `NODE_VERSION=24`, `SITE_URL=https://<project>.pages.dev` (or your custom domain), used for canonical links and the sitemap.
+
+`public/_headers` (CSP and security headers) is applied by Cloudflare automatically.
+
+Use `u('/path/')` for internal links.
 
 ## Before launch
 
-- Hosting: the idea report recommends **Cloudflare Pages** for a monetised site (GitHub Pages' terms discourage commercial use). `public/_headers` is already in Cloudflare format; build command `npm run build`, output `dist`.
 - Re-check dated rules: `RULES_REVIEWED` and `EU_ALT_TERMS` in `src/data/appstore.ts`, the 2025 US link-out ruling (Apple's appeal), and screenshot sizes after each WWDC.
 
 - Name & URL: `src/data/site.ts` ("ShipMath" is a placeholder), `public/manifest.webmanifest`.
