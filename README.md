@@ -1,6 +1,6 @@
 # ShipMath: App Store calculators for iOS developers
 
-Calculators and tools for iOS developers. Static site (Astro), hosted on Cloudflare Pages. **AI cost tools moved to the sister site TokenMeter** (`~/Desktop/sites/Top_4_Ideas/02_AI_ML_Developer_Utilities/website`), so the two sites don't compete for the same searches.
+Calculators and tools for iOS developers. Static site (Astro), hosted on Cloudflare. **AI cost tools moved to the sister site TokenMeter** (`~/Desktop/sites/Top_4_Ideas/02_AI_ML_Developer_Utilities/website`), so the two sites don't compete for the same searches.
 
 ## Pages (26)
 
@@ -21,14 +21,12 @@ npm run dev            # http://localhost:4321
 npm run build && npm run preview
 ```
 
-## Deploy to Cloudflare Pages
+## Deploy (Cloudflare Workers)
 
-Cloudflare Pages builds and deploys on every push to `main` (Workers & Pages → Create → Pages → Import an existing Git repository):
+Cloudflare builds and deploys on every push to `main` (Workers Builds: build command `npm run build`, static assets from `dist`). Node 24 comes from `.node-version`. `public/_headers` (CSP and security headers) is applied automatically.
 
-- Framework preset: Astro · Build command: `npm run build` · Output directory: `dist`
-- Environment variables: `NODE_VERSION=24`, `SITE_URL=https://<project>.pages.dev` (or your custom domain), used for canonical links and the sitemap.
-
-`public/_headers` (CSP and security headers) is applied by Cloudflare automatically.
+- Live URL: `SITE.url` in `src/data/site.ts`, used for canonical links and the sitemap. Change it when you add a custom domain.
+- Visit statistics: create a site under Cloudflare dashboard → Web Analytics, and paste its token into `SITE.analyticsToken`.
 
 Use `u('/path/')` for internal links.
 
